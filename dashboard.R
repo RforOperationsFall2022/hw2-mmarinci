@@ -38,7 +38,7 @@ sidebar <- dashboardSidebar(width = 300,
                 selectize = TRUE,
                 selected = sort(unique(ieq$SerialNoFactor))),
     
-    # Birth year Selection ----------------------------------------------
+    # Month Selection ----------------------------------------------
     selectInput("timeSelect",
                 "Months:",
                 choices = sort(unique(ieq$month)),
@@ -60,15 +60,7 @@ body <- dashboardBody(tabItems(
   
   # IEQ page ----------------------------------------------
   tabItem("ieq",
-          
-          # Input and Value Boxes ----------------------------------------------
-          fluidRow(
-            infoBoxOutput("mass"),
-            valueBoxOutput("height")
-          ),
-          
-          # Plot ----------------------------------------------
-          fluidRow(
+        fluidPage(
             box(title = "Indoor Temperature",
                    width = 12,
                    plotlyOutput("plot_temp"))
@@ -78,14 +70,16 @@ body <- dashboardBody(tabItems(
   # Weather Page ----------------------------------------------
   tabItem("weather",
           fluidPage(
-            box(title = "Selected Character Stats", width = 12))
+            box(title = "Indoor vs. Outdoor Temperature", 
+                width = 12,
+                plotlyOutput("plot_weather")))
   ),
   
   # Survey page ----------------------------------------------
   tabItem("survey",
           
           # Input and Value Boxes ----------------------------------------------
-          fluidRow(
+          fluidPage(
             infoBoxOutput("mass"),
             valueBoxOutput("height")
           )
@@ -124,9 +118,20 @@ server <- function(input, output) {
   # A plot showing temperature over time for each home -----------------------------------
   output$plot_temp <- renderPlotly({
     ggplot(data = homeData(), aes(x=Date)) + 
-      geom_line(aes(y=ind.temp, color="darkred")) +
-      geom_line(aes(y=ind.RH, color="steelblue", linetype = "twodash")) +
+      geom_line(aes(y=ind.temp)) +
+      geom_line(aes(y=ind.RH)) +
       facet_wrap(~ SerialNoFactor)
+  })
+  
+  # A plot showing indoor vs. outdoor temperature for each home -----------------------------------
+  output$plot_weather <- renderPlotly({
+    ggplot(data=homeData(), aes(x=out.temp, y=ind.temp, color=Pre_Post)) + 
+      geom_point(alpha=.3) + 
+      geom_smooth(method="lm", se = FALSE) + 
+      facet_wrap(~SerialNoFactor) + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+      xlab('Outdoor Temperature (Daily Average, F)') + 
+      ylab('Indoor Temperature (Daily Average, F)')
   })
   
 }
