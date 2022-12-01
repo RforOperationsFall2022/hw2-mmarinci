@@ -39,12 +39,12 @@ sidebar <- dashboardSidebar(width = 300,
                 selected = sort(unique(ieq$SerialNoFactor))),
     
     # Month Selection ----------------------------------------------
-    selectInput("timeSelect",
-                "Months:",
-                choices = sort(unique(ieq$month)),
-                multiple = TRUE,
-                selectize = TRUE,
-                selected = sort(unique(ieq$month)))
+    sliderInput("timeSelect",
+                "Timeframe:",
+                min = min(ieq$Date),
+                max = max(ieq$Date),
+                value = c(min(ieq$Date), max(ieq$Date)),
+                timeFormat = "%Y-%m-%d")
   )
 )
 
@@ -61,18 +61,21 @@ body <- dashboardBody(tabItems(
   # IEQ page ----------------------------------------------
   tabItem("ieq",
         fluidPage(
-            box(title = "Indoor Temperature",
+            tabBox(title = "IEQ",
                    width = 12,
-                   plotlyOutput("plot_temp"))
+                   tabPanel("Indoor Temperature", plotlyOutput("plot_temp")),
+                   tabPanel("Indoor RH", plotlyOutput("plot_RH"))
           )
+  )
   ),
   
   # Weather Page ----------------------------------------------
   tabItem("weather",
           fluidPage(
-            box(title = "Indoor vs. Outdoor Temperature", 
+            tabBox(title = "Weather Impacts", 
                 width = 12,
-                plotlyOutput("plot_weather")))
+                tabPanel("Indoor vs. Outdoor Temperature", plotlyOutput("plot_weather_temp")),
+                tabPanel("Indoor vs. Outdoor Relative Humidity", plotlyOutput("plot_weather_RH")))
   ),
   
   # Survey page ----------------------------------------------
@@ -86,6 +89,8 @@ body <- dashboardBody(tabItems(
   )
 )
 )
+)
+
 
 ui <- dashboardPage(header, sidebar, body)
 
@@ -102,9 +107,7 @@ server <- function(input, output) {
   homeData <- reactive({
       
       # Time Slider Filter ----------------------------------------------
-    if (length(input$timeSelect) > 0 ) {
-      ieq <- subset(ieq, month %in% input$timeSelect)
-    }
+    ieq <- filter(ieq, ieq$Date >= input$timeSelect[1] & ieq$Date <= input$timeSelect[2])
     
     # Home Filter ----------------------------------------------
     if (length(input$homeSelect) > 0 ) {
@@ -117,21 +120,44 @@ server <- function(input, output) {
   
   # A plot showing temperature over time for each home -----------------------------------
   output$plot_temp <- renderPlotly({
-    ggplot(data = homeData(), aes(x=Date)) + 
-      geom_line(aes(y=ind.temp)) +
-      geom_line(aes(y=ind.RH)) +
-      facet_wrap(~ SerialNoFactor)
+    ggplot(data = homeData(), aes(x=Date, y=ind.temp, color=Pre_Post)) + 
+      geom_line() +
+      facet_wrap(~ SerialNoFactor) + 
+      ylab('Indoor Temperature (Daily Average, F)') +
+      theme_classic()
+  })
+  
+  # A plot showing RH over time for each home -----------------------------------
+  output$plot_RH <- renderPlotly({
+    ggplot(data = homeData(), aes(x=Date, y=ind.RH, color=Pre_Post)) + 
+      geom_line() +
+      facet_wrap(~ SerialNoFactor) + 
+      ylab('Indoor Relative Humidity (Daily Average, %)') +
+      theme_classic()
   })
   
   # A plot showing indoor vs. outdoor temperature for each home -----------------------------------
-  output$plot_weather <- renderPlotly({
+  output$plot_weather_temp <- renderPlotly({
     ggplot(data=homeData(), aes(x=out.temp, y=ind.temp, color=Pre_Post)) + 
       geom_point(alpha=.3) + 
       geom_smooth(method="lm", se = FALSE) + 
       facet_wrap(~SerialNoFactor) + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
       xlab('Outdoor Temperature (Daily Average, F)') + 
-      ylab('Indoor Temperature (Daily Average, F)')
+      ylab('Indoor Temperature (Daily Average, F)') +
+      theme_classic()
+  })
+  
+  # A plot showing indoor vs. outdoor RH for each home -----------------------------------
+  output$plot_weather_RH <- renderPlotly({
+    ggplot(data=homeData(), aes(x=out.RH, y=ind.RH, color=Pre_Post)) + 
+      geom_point(alpha=.3) + 
+      geom_smooth(method="lm", se = FALSE) + 
+      facet_wrap(~SerialNoFactor) + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+      xlab('Outdoor Relative Humidity (Daily Average, %)') + 
+      ylab('Indoor Relative Humidity (Daily Average, %)') +
+      theme_classic()
   })
   
 }
