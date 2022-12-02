@@ -8,39 +8,42 @@ library(haven)
 library(lubridate)
 library(scales)
 
-# Load and clean data ----------------------------------------------
+# Load and clean IEQ data ----------------------------------------------
 ieq <- read.csv('Daily_IEQ_Weather_Data.csv') %>%
-  transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization")))
+  transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization"))) # Set order so pre displays first
 ieq$Date <- as.Date(ieq$Date, format = "%Y-%m-%d")
 
+# Load and clean survey data
 survey <- read.csv('Survey_Data.csv')
-
-xwalk <- read.csv('Crosswalk.csv')
+xwalk <- read.csv('Crosswalk.csv') # Crosswalk between data monitor serial number and home ID
 names(xwalk)[names(xwalk) == "Serial"] <- "SerialNo"
+
+# Add serial numbers to survey data and set factor variables
 survey <- merge(xwalk, survey) %>%
   transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization"))) %>%
   transform(C1_How_Hard_Pay_Energy_Bill = factor(C1_How_Hard_Pay_Energy_Bill, 
                                                  levels = c("Very Easy", "Easy", "Neither Hard nor Easy", "Hard", "Very Hard")))
 
-
 # Avoid plotly issues ----------------------------------------------
 pdf(NULL)
 
-# Application header & title ----------------------------------------------
-header <- dashboardHeader(title = "Weatherization Results Dashboard",
-                          titleWidth = 400)
 
-# Dashboard Sidebar ----------------------------------------------
+
+# Application header & title ----------------------------------------------
+header <- dashboardHeader(title = "Weatherization Results",
+                          titleWidth = 300)
+
+# Dashboard Sidebar -----------------------------------------------------------
 sidebar <- dashboardSidebar(width = 300,
   sidebarMenu(
     id = "tabs",
     
-    # Menu Items ----------------------------------------------
+    # Menu Items --------------------------------------------------------------
     menuItem("Indoor Temperature and Humidity", icon = icon("temperature-half"), tabName = "ieq"),
     menuItem("Weather Data", icon = icon("sun"), tabName = "weather"),
     menuItem("Survey Data", icon = icon("clipboard"), tabName = "survey"),
     
-    # Inputs: select variables to plot ----------------------------------------------
+    # Inputs: select variables to plot ----------------------------------------
     selectInput("homeSelect",
                 "Select Homes to View:",
                 choices = sort(unique(ieq$SerialNoFactor)),
@@ -48,13 +51,20 @@ sidebar <- dashboardSidebar(width = 300,
                 selectize = TRUE,
                 selected = sort(unique(ieq$SerialNoFactor))),
     
-    # Time Selection ----------------------------------------------
+    # Time Selection ----------------------------------------------------------
     sliderInput("timeSelect",
                 "Time Frame:",
                 min = min(ieq$Date),
                 max = max(ieq$Date),
                 value = c(min(ieq$Date), max(ieq$Date)),
-                timeFormat = "%Y-%m-%d")
+                timeFormat = "%Y-%m-%d"),
+    
+    # Pre/Post Weatherization Selection ---------------------------------------
+    checkboxGroupInput("statusSelect",
+                       "Weatherization Status:",
+                       choices = unique(ieq$Pre_Post),
+                       selected = unique(ieq$Pre_Post))
+    
   )
 )
 
@@ -140,6 +150,11 @@ server <- function(input, output) {
     if (length(input$homeSelect) > 0 ) {
       ieq <- subset(ieq, SerialNoFactor %in% input$homeSelect)
     }
+      
+      # Wx Status Filter ----------------------------------------------
+      if (length(input$statusSelect) > 0 ) {
+        ieq <- subset(ieq, Pre_Post %in% input$statusSelect)
+    }
     
     # Return dataframe ----------------------------------------------
     return(ieq)
@@ -147,6 +162,23 @@ server <- function(input, output) {
   
   # Reactive survey data function -------------------------------------------
   surveyData <- reactive({
+    
+    # Home Filter ----------------------------------------------
+    if (length(input$homeSelect) > 0 ) {
+      survey <- subset(survey, SerialNo %in% input$homeSelect)
+    }
+    
+    # Wx Status Filter ----------------------------------------------
+    if (length(input$statusSelect) > 0 ) {
+      survey <- subset(survey, Pre_Post %in% input$statusSelect)
+    }
+    
+    # Return dataframe ----------------------------------------------
+    return(survey)
+  })
+  
+  # Reactive box data function -------------------------------------------
+  valueData <- reactive({
     
     # Home Filter ----------------------------------------------
     if (length(input$homeSelect) > 0 ) {
@@ -207,21 +239,21 @@ server <- function(input, output) {
   
   # Percent of people with unsafe temperatures before and after
   output$unsafe_pre <- renderValueBox({
-    dat <- surveyData() %>%
+    dat <- valueData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
     valueBox(subtitle = "Reported Unsafe Temperatures, Pre", value = num, color = "orange")
   })
   
   output$unsafe_post <- renderValueBox({
-    dat <- surveyData() %>%
+    dat <- valueData() %>%
       filter(Pre_Post == "Post-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
     valueBox(subtitle = "Reported Unsafe Temperatures, Post", value = num, color = "green")
   })
   
   output$COPD <- renderValueBox({
-    dat <- surveyData() %>%
+    dat <- valueData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$B2_Have_Asthma, na.rm = T))
     valueBox(subtitle = "Have Asthma", value = num, color = "light-blue")
