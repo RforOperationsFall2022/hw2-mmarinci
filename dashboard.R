@@ -52,19 +52,20 @@ sidebar <- dashboardSidebar(width = 300,
                 selectize = TRUE,
                 selected = sort(unique(ieq$SerialNoFactor))),
     
+    # Pre/Post Weatherization Selection ---------------------------------------
+    checkboxGroupInput("statusSelect",
+                       "Weatherization Status:",
+                       choices = unique(ieq$Pre_Post),
+                       selected = unique(ieq$Pre_Post)),
+    
     # Time Selection ----------------------------------------------------------
     sliderInput("timeSelect",
                 "Time Frame:",
                 min = min(ieq$Date),
                 max = max(ieq$Date),
                 value = c(min(ieq$Date), max(ieq$Date)),
-                timeFormat = "%Y-%m-%d"),
-    
-    # Pre/Post Weatherization Selection ---------------------------------------
-    checkboxGroupInput("statusSelect",
-                       "Weatherization Status:",
-                       choices = unique(ieq$Pre_Post),
-                       selected = unique(ieq$Pre_Post))
+                timeFormat = "%Y-%m-%d")
+
     
   )
 )

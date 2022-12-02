@@ -5,9 +5,9 @@ account: michaela-marincic
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 7798844
-bundleId: 6583481
+bundleId: 6583879
 url: https://michaela-marincic.shinyapps.io/hw2-mmarinci/
-when: 1670012367.28031
-lastSyncTime: 1670012367.28031
+when: 1670017980.1566
+lastSyncTime: 1670017980.1566
 asMultiple: FALSE
 asStatic: FALSE
