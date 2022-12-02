@@ -6,13 +6,13 @@ library(plotly)
 library(shinythemes)
 library(haven)
 library(lubridate)
+library(scales)
 
 # Load and clean data ----------------------------------------------
 ieq <- read.csv('Daily_IEQ_Weather_Data.csv')
 ieq$Date <- as.Date(ieq$Date, format = "%Y-%m-%d")
 
 survey <- read.csv('Survey_Data.csv')
-survey$Date <- as.Date(survey$Date, format = "%Y-%m-%d")
 
 xwalk <- read.csv('Crosswalk.csv')
 names(xwalk)[names(xwalk) == "Serial"] <- "SerialNo"
@@ -43,7 +43,7 @@ sidebar <- dashboardSidebar(width = 300,
                 selectize = TRUE,
                 selected = sort(unique(ieq$SerialNoFactor))),
     
-    # Month Selection ----------------------------------------------
+    # Time Selection ----------------------------------------------
     sliderInput("timeSelect",
                 "Time Frame:",
                 min = min(ieq$Date),
@@ -81,18 +81,30 @@ body <- dashboardBody(tabItems(
                 width = 12,
                 tabPanel("Indoor vs. Outdoor Temperature", plotlyOutput("plot_weather_temp")),
                 tabPanel("Indoor vs. Outdoor Relative Humidity", plotlyOutput("plot_weather_RH")))
+  )
   ),
   
   # Survey page ----------------------------------------------
   tabItem("survey",
           
           # Input and Value Boxes ----------------------------------------------
-          fluidPage(
-            infoBoxOutput("mass"),
-            valueBoxOutput("height")
+          fluidRow(
+            valueBoxOutput("unsafe_pre"),
+            valueBoxOutput("unsafe_post")
+          ),
+          
+          fluidRow(
+            box(title = "Comfort Level",
+                width = 12,
+                plotlyOutput("comfort"))
+          ),
+          
+          fluidRow(
+            box(title = "Difficulty Paying Energy Bill",
+                width = 12,
+                plotlyOutput("bill"))
           )
   )
-)
 )
 )
 
@@ -108,7 +120,7 @@ ui <- dashboardPage(header, sidebar, body)
 # Define server function required to create plots and value boxes -----
 server <- function(input, output) {
   
-  # Reactive data function -------------------------------------------
+  # Reactive IEQ & weather data function -------------------------------------------
   homeData <- reactive({
       
       # Time Slider Filter ----------------------------------------------
@@ -121,6 +133,18 @@ server <- function(input, output) {
     
     # Return dataframe ----------------------------------------------
     return(ieq)
+  })
+  
+  # Reactive survey data function -------------------------------------------
+  surveyData <- reactive({
+    
+    # Home Filter ----------------------------------------------
+    if (length(input$homeSelect) > 0 ) {
+      survey <- subset(survey, SerialNo %in% input$homeSelect)
+    }
+    
+    # Return dataframe ----------------------------------------------
+    return(survey)
   })
   
   # A plot showing temperature over time for each home -----------------------------------
@@ -164,6 +188,24 @@ server <- function(input, output) {
       ylab('Indoor Relative Humidity (Daily Average, %)') +
       theme_classic()
   })
+  
+  # Percent of people with unsafe temperatures before and after
+  output$unsafe_pre <- renderValueBox({
+    dat <- surveyData() %>%
+      filter(Pre_Post == "Pre-Weatherization")
+    num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
+    valueBox(subtitle = "% Unsafe Temp Before", value = num, color = "orange")
+  })
+  
+  output$unsafe_post <- renderValueBox({
+    dat <- surveyData() %>%
+      filter(Pre_Post == "Post-Weatherization")
+    num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
+    valueBox(subtitle = "% Unsafe Temp After", value = num, color = "green")
+  })
+  
+  # Histogram of comfort before and after
+  
   
 }
 
