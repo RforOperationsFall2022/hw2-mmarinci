@@ -10,8 +10,13 @@ library(lubridate)
 # Load and clean data ----------------------------------------------
 ieq <- read.csv('Daily_IEQ_Weather_Data.csv')
 ieq$Date <- as.Date(ieq$Date, format = "%Y-%m-%d")
+
 survey <- read.csv('Survey_Data.csv')
+survey$Date <- as.Date(survey$Date, format = "%Y-%m-%d")
+
 xwalk <- read.csv('Crosswalk.csv')
+names(xwalk)[names(xwalk) == "Serial"] <- "SerialNo"
+survey <- merge(xwalk, survey)
 
 # Avoid plotly issues ----------------------------------------------
 pdf(NULL)
@@ -40,7 +45,7 @@ sidebar <- dashboardSidebar(width = 300,
     
     # Month Selection ----------------------------------------------
     sliderInput("timeSelect",
-                "Timeframe:",
+                "Time Frame:",
                 min = min(ieq$Date),
                 max = max(ieq$Date),
                 value = c(min(ieq$Date), max(ieq$Date)),
