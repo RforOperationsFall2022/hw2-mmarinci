@@ -9,14 +9,19 @@ library(lubridate)
 library(scales)
 
 # Load and clean data ----------------------------------------------
-ieq <- read.csv('Daily_IEQ_Weather_Data.csv')
+ieq <- read.csv('Daily_IEQ_Weather_Data.csv') %>%
+  transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization")))
 ieq$Date <- as.Date(ieq$Date, format = "%Y-%m-%d")
 
 survey <- read.csv('Survey_Data.csv')
 
 xwalk <- read.csv('Crosswalk.csv')
 names(xwalk)[names(xwalk) == "Serial"] <- "SerialNo"
-survey <- merge(xwalk, survey)
+survey <- merge(xwalk, survey) %>%
+  transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization"))) %>%
+  transform(C1_How_Hard_Pay_Energy_Bill = factor(C1_How_Hard_Pay_Energy_Bill, 
+                                                 levels = c("Very Easy", "Easy", "Neither Hard nor Easy", "Hard", "Very Hard")))
+
 
 # Avoid plotly issues ----------------------------------------------
 pdf(NULL)
@@ -90,7 +95,8 @@ body <- dashboardBody(tabItems(
           # Input and Value Boxes ----------------------------------------------
           fluidRow(
             valueBoxOutput("unsafe_pre"),
-            valueBoxOutput("unsafe_post")
+            valueBoxOutput("unsafe_post"),
+            valueBoxOutput("COPD")
           ),
           
           fluidRow(
@@ -102,7 +108,7 @@ body <- dashboardBody(tabItems(
           fluidRow(
             box(title = "Difficulty Paying Energy Bill",
                 width = 12,
-                plotlyOutput("bill"))
+                plotlyOutput("bills"))
           )
   )
 )
@@ -194,18 +200,44 @@ server <- function(input, output) {
     dat <- surveyData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
-    valueBox(subtitle = "% Unsafe Temp Before", value = num, color = "orange")
+    valueBox(subtitle = "Reported Unsafe Temperatures, Pre", value = num, color = "orange")
   })
   
   output$unsafe_post <- renderValueBox({
     dat <- surveyData() %>%
       filter(Pre_Post == "Post-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
-    valueBox(subtitle = "% Unsafe Temp After", value = num, color = "green")
+    valueBox(subtitle = "Reported Unsafe Temperatures, Post", value = num, color = "green")
+  })
+  
+  output$COPD <- renderValueBox({
+    dat <- surveyData() %>%
+      filter(Pre_Post == "Pre-Weatherization")
+    num <- scales::percent(mean(dat$B2_Have_Asthma, na.rm = T))
+    valueBox(subtitle = "Have Asthma", value = num, color = "light-blue")
   })
   
   # Histogram of comfort before and after
+  output$comfort <- renderPlotly({
+    ggplot(surveyData(), aes(x = A1_Last_Summer_Indoor_Temp)) +
+      geom_histogram(stat = "count") +
+      facet_wrap(~ Pre_Post) +
+      ylab("Count") +
+      xlab("How would you describe the temperature in your home during summer?") +
+      theme_classic() +
+      theme(axis.title.x = element_text(size = 13))
+  })
   
+  # Histogram of difficulty paying bills before and after
+  output$bills <- renderPlotly({
+    ggplot(surveyData(), aes(x = C1_How_Hard_Pay_Energy_Bill)) +
+      geom_histogram(stat = "count") +
+      facet_wrap(~ Pre_Post) +
+      ylab("Count") +
+      xlab("How difficult is it for you to pay your energy bill?") +
+      theme_classic() +
+      theme(axis.title.x = element_text(size = 13))
+  })
   
 }
 
