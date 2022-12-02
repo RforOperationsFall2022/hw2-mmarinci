@@ -42,7 +42,7 @@ sidebar <- dashboardSidebar(width = 300,
     
     # Inputs: select variables to plot ----------------------------------------------
     selectInput("homeSelect",
-                "Homes:",
+                "Select Homes to View:",
                 choices = sort(unique(ieq$SerialNoFactor)),
                 multiple = TRUE,
                 selectize = TRUE,
@@ -71,7 +71,9 @@ body <- dashboardBody(tabItems(
   # IEQ page ----------------------------------------------
   tabItem("ieq",
         fluidPage(
-            tabBox(title = "IEQ",
+          div("Indoor Environmental Quality (IEQ)", style = "font-size:20pt; padding:15px; color:black"),
+          div("The goal of this research was to measure the real impacts of home weatherization on indoor temperature and humidity. The graphs below show trends in these two measures over time in homes before and after receiving weatherization during the summer of 2021.", style = "font-size:13pt; padding:15px"),
+          tabBox(title = "",
                    width = 12,
                    tabPanel("Indoor Temperature", plotlyOutput("plot_temp")),
                    tabPanel("Indoor RH", plotlyOutput("plot_RH"))
@@ -82,7 +84,9 @@ body <- dashboardBody(tabItems(
   # Weather Page ----------------------------------------------
   tabItem("weather",
           fluidPage(
-            tabBox(title = "Weather Impacts", 
+            div("Weather and Home Comfort", style = "font-size:20pt; padding:15px; color:black"),
+            div("In a home that has been properly weatherized, we expect outdoor weather conditions to have only a small impact on indoor comfort levels. A well-insulated home should stay warm regardless of how cold it gets outside, and vice versa. Therefore, in the graphs below, a relatively horizontal line indicates the house is well sealed, while a strongly upward sloping lines indicate the house is getting warmer as the heat builds outside.", style = "font-size:13pt; padding:15px"),
+            tabBox(title = "", 
                 width = 12,
                 tabPanel("Indoor vs. Outdoor Temperature", plotlyOutput("plot_weather_temp")),
                 tabPanel("Indoor vs. Outdoor Relative Humidity", plotlyOutput("plot_weather_RH")))
@@ -158,8 +162,11 @@ server <- function(input, output) {
     ggplot(data = homeData(), aes(x=Date, y=ind.temp, color=Pre_Post)) + 
       geom_line() +
       facet_wrap(~ SerialNoFactor) + 
+     # ggtitle('Temperature Inside Homes Receiving Weatherization Services') +
       ylab('Indoor Temperature (Daily Average, F)') +
-      theme_classic()
+      theme_classic() +
+      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
   # A plot showing RH over time for each home -----------------------------------
@@ -167,32 +174,35 @@ server <- function(input, output) {
     ggplot(data = homeData(), aes(x=Date, y=ind.RH, color=Pre_Post)) + 
       geom_line() +
       facet_wrap(~ SerialNoFactor) + 
+    #  ggtitle('Relative Humidity (RH) Inside Homes Receiving Weatherization Services') +
       ylab('Indoor Relative Humidity (Daily Average, %)') +
-      theme_classic()
+      theme_classic() +
+      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
   # A plot showing indoor vs. outdoor temperature for each home -----------------------------------
   output$plot_weather_temp <- renderPlotly({
     ggplot(data=homeData(), aes(x=out.temp, y=ind.temp, color=Pre_Post)) + 
-      geom_point(alpha=.3) + 
       geom_smooth(method="lm", se = FALSE) + 
       facet_wrap(~SerialNoFactor) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
       xlab('Outdoor Temperature (Daily Average, F)') + 
       ylab('Indoor Temperature (Daily Average, F)') +
-      theme_classic()
+      theme_classic() +
+      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
   # A plot showing indoor vs. outdoor RH for each home -----------------------------------
   output$plot_weather_RH <- renderPlotly({
     ggplot(data=homeData(), aes(x=out.RH, y=ind.RH, color=Pre_Post)) + 
-      geom_point(alpha=.3) + 
       geom_smooth(method="lm", se = FALSE) + 
       facet_wrap(~SerialNoFactor) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
       xlab('Outdoor Relative Humidity (Daily Average, %)') + 
       ylab('Indoor Relative Humidity (Daily Average, %)') +
-      theme_classic()
+      theme_classic() +
+      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
   # Percent of people with unsafe temperatures before and after
