@@ -20,6 +20,7 @@ names(xwalk)[names(xwalk) == "Serial"] <- "SerialNo"
 
 # Add serial numbers to survey data and set factor variables
 survey <- merge(xwalk, survey) %>%
+  subset(select = -c(Site_ID)) %>%
   transform(Pre_Post = factor(Pre_Post, levels = c("Pre-Weatherization", "Post-Weatherization"))) %>%
   transform(C1_How_Hard_Pay_Energy_Bill = factor(C1_How_Hard_Pay_Energy_Bill, 
                                                  levels = c("Very Easy", "Easy", "Neither Hard nor Easy", "Hard", "Very Hard")))
@@ -80,7 +81,7 @@ body <- dashboardBody(tabItems(
   
   # IEQ page ----------------------------------------------
   tabItem("ieq",
-        fluidPage(
+        fluidPage(theme = shinytheme("cosmo"),
           div("Indoor Environmental Quality (IEQ)", style = "font-size:20pt; padding:15px; color:black"),
           div("The goal of this research was to measure the real impacts of home weatherization on indoor temperature and humidity. The graphs below show trends in these two measures over time in homes before and after receiving weatherization during the summer of 2021.", style = "font-size:13pt; padding:15px"),
           tabBox(title = "",
@@ -110,7 +111,7 @@ body <- dashboardBody(tabItems(
           fluidRow(
             valueBoxOutput("unsafe_pre"),
             valueBoxOutput("unsafe_post"),
-            valueBoxOutput("COPD")
+            valueBoxOutput("asthma")
           ),
           
           fluidRow(
@@ -123,14 +124,19 @@ body <- dashboardBody(tabItems(
             box(title = "Difficulty Paying Energy Bill",
                 width = 12,
                 plotlyOutput("bills"))
+          ),
+          
+          fluidRow(
+            box(title = "Survey Data",
+                width = 12,
+                DT::dataTableOutput("dt"))
           )
   )
 )
 )
 
 
-ui <- dashboardPage(header, sidebar, body)
-
+ui <- dashboardPage(header, sidebar, body, skin = "green")
 
 
 
@@ -252,14 +258,14 @@ server <- function(input, output) {
     valueBox(subtitle = "Reported Unsafe Temperatures, Post", value = num, color = "green")
   })
   
-  output$COPD <- renderValueBox({
+  output$asthma <- renderValueBox({
     dat <- valueData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$B2_Have_Asthma, na.rm = T))
     valueBox(subtitle = "Have Asthma", value = num, color = "light-blue")
   })
   
-  # Histogram of comfort before and after
+  # Histogram of comfort before and after -------------------------------------
   output$comfort <- renderPlotly({
     ggplot(surveyData(), aes(x = A1_Last_Summer_Indoor_Temp)) +
       geom_histogram(stat = "count") +
@@ -270,7 +276,7 @@ server <- function(input, output) {
       theme(axis.title.x = element_text(size = 13))
   })
   
-  # Histogram of difficulty paying bills before and after
+  # Histogram of difficulty paying bills before and after ---------------------
   output$bills <- renderPlotly({
     ggplot(surveyData(), aes(x = C1_How_Hard_Pay_Energy_Bill)) +
       geom_histogram(stat = "count") +
@@ -280,6 +286,13 @@ server <- function(input, output) {
       theme_classic() +
       theme(axis.title.x = element_text(size = 13))
   })
+  
+  # Data Table ----------------------------------------------------------------
+  output$dt <- DT::renderDataTable(
+    subset(surveyData(), select = c(SerialNo, Pre_Post, A1_Last_Summer_Indoor_Temp, A2_Unsafe_Indoor_Temp, B2_Have_Asthma, C1_How_Hard_Pay_Energy_Bill)) %>%
+      setNames(c("Serial_Number", "Pre_Post", "Summer_Indoor_Temp", "Unsafe_Indoor_Temp", "Have_Asthma", "How_Hard_Pay_Energy_Bill")),
+    rownames = FALSE
+    )
   
 }
 
