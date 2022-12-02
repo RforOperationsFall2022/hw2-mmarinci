@@ -145,7 +145,20 @@ ui <- dashboardPage(header, sidebar, body, skin = "green")
 
 
 # Define server function required to create plots and value boxes -----
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  observeEvent(input$statusSelect, {
+      ieq <- subset(ieq, Pre_Post %in% input$statusSelect)
+    
+    # Control the value, min, max, and step.
+    # Step size is 2 when input value is even; 1 when value is odd.
+    updateSliderInput(session,
+                      "timeSelect",
+                      min = min(ieq$Date),
+                      max = max(ieq$Date),
+                      value = c(min(ieq$Date), max(ieq$Date)),
+                      timeFormat = "%Y-%m-%d")
+  })
   
   # Reactive IEQ & weather data function -------------------------------------------
   homeData <- reactive({
@@ -204,7 +217,7 @@ server <- function(input, output) {
      # ggtitle('Temperature Inside Homes Receiving Weatherization Services') +
       ylab('Indoor Temperature (Daily Average, F)') +
       theme_classic() +
-      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust=1)) + 
       scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
@@ -216,7 +229,7 @@ server <- function(input, output) {
     #  ggtitle('Relative Humidity (RH) Inside Homes Receiving Weatherization Services') +
       ylab('Indoor Relative Humidity (Daily Average, %)') +
       theme_classic() +
-      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust=1)) + 
       scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
@@ -228,7 +241,7 @@ server <- function(input, output) {
       xlab('Outdoor Temperature (Daily Average, F)') + 
       ylab('Indoor Temperature (Daily Average, F)') +
       theme_classic() +
-      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust=1)) + 
       scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
@@ -240,7 +253,7 @@ server <- function(input, output) {
       xlab('Outdoor Relative Humidity (Daily Average, %)') + 
       ylab('Indoor Relative Humidity (Daily Average, %)') +
       theme_classic() +
-      theme(axis.text.x = element_text(angle = -45, vjust = 0.5, hjust=1)) + 
+      theme(axis.text.x = element_text(angle = -90, vjust = 0.5, hjust=1)) + 
       scale_color_manual(values=c("orange","skyblue"), name = "")
   })
   
@@ -249,21 +262,21 @@ server <- function(input, output) {
     dat <- valueData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
-    valueBox(subtitle = "Reported Unsafe Temperatures, Pre", value = num, color = "orange")
+    valueBox(subtitle = "Reported Unsafe Temperatures, Pre", value = num, icon = icon("triangle-exclamation"), color = "orange")
   })
   
   output$unsafe_post <- renderValueBox({
     dat <- valueData() %>%
       filter(Pre_Post == "Post-Weatherization")
     num <- scales::percent(mean(dat$A2_Unsafe_Indoor_Temp, na.rm = T))
-    valueBox(subtitle = "Reported Unsafe Temperatures, Post", value = num, color = "green")
+    valueBox(subtitle = "Reported Unsafe Temperatures, Post", value = num, icon = icon("temperature-arrow-down"), color = "green")
   })
   
   output$asthma <- renderValueBox({
     dat <- valueData() %>%
       filter(Pre_Post == "Pre-Weatherization")
     num <- scales::percent(mean(dat$B2_Have_Asthma, na.rm = T))
-    valueBox(subtitle = "Have Asthma", value = num, color = "light-blue")
+    valueBox(subtitle = "Have Asthma", value = num, icon = icon("lungs"), color = "light-blue")
   })
   
   # Histogram of comfort before and after -------------------------------------
